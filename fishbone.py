@@ -1,4 +1,5 @@
 import pandas as pd
+import sys
 
 ROWS = 50
 COLS = 200
@@ -143,15 +144,16 @@ def draw_fishbone(root, canvas):
     for i in root.children:
         draw_fishbone(i, canvas)
 
+file = sys.argv[1]
 canvas = [[" "]*(COLS + LEFT_PADDING) for _ in range(ROWS)]
-df = pd.read_excel('test-nested-2.xlsx')
+df = pd.read_excel(file)
 root = load_fishbone(df, "Late to Work")
 plot_heads(root, canvas)
 draw_fishbone(root, canvas)
 
 # Guide frames
 for i in range(1, COLS - 1):
-    canvas[0][LEFT_PADDING + i] = "X"
+    canvas[0][LEFT_PADDING + i] = "-"
     canvas[ROWS - 1][LEFT_PADDING + i] = "-"
 
 for i in range(1, ROWS - 1):
