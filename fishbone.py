@@ -1,9 +1,9 @@
 import pandas as pd
 import sys
 
-ROWS = 100
-COLS = 300
-LEFT_PADDING = 75
+ROWS = 125
+COLS = ROWS * 3
+LEFT_PADDING = COLS // 2
 
 class Fishbone:
     def __init__(self, name, level, pos):
@@ -60,28 +60,46 @@ def load_fishbone(df, name):
                 
             child = Fishbone(i[c], level, len(temp.children) + 1)
             child.parent = temp
-
-            # Add point head of fishbones
-            spacing = child.pos * temp.length // 6
-
-            # Special spacing for Level 1 bones, to make the spacing more wider
-            if (child.parent == root):
-                spacing = ((child.pos + 1) // 2) * (root.length // 3) - 50
-
-            # Vertical bone
-            if (child.level % 2 == 1):
-                child.row = temp.row
-                child.col = temp.col - spacing
-            # Horizontal bone
-            else:
-                # Add diagonal alternately for parent bones level 1
-                child.row = temp.row + (- spacing if (child.parent.pos % 2 == 0 and child.level == 2) else (spacing))
-                child.col = temp.col - spacing
             
             temp.children.append(child)
             break
 
     return root
+
+def position_head(bone):
+    """Position heads of fishbones, relative to number of siblings"""
+    siblings = len(bone.parent.children)
+    spacing = bone.pos * bone.parent.length // (siblings + 1)
+
+    # Special spacing for Level 1 bones, to make the spacing more wider
+    if (bone.level == 1):
+        spacing = ((bone.pos + 1) // 2) * (root.length // 3) - (COLS // 10)
+
+    # Vertical bone
+    if (bone.level % 2 == 1):
+        bone.row = bone.parent.row
+        bone.col = bone.parent.col - spacing
+    # Horizontal bone
+    else:
+        # Add Level 2 bones alternately on top or bottom depending on parent being at top or bottom
+        bone.row = bone.parent.row + (- spacing if (bone.parent.pos % 2 == 0 and bone.level == 2) else (spacing))
+        bone.col = bone.parent.col - spacing
+
+    for i in bone.children:
+        position_head(i)
+
+def rescale(bone):
+    """Rescale fishbone length if longer than grandparent's spacing. Also limits going out the canvas"""
+    # Overlaps only happen with bone levels 3 onwards
+    if (bone.level > 2):
+        grandparent = bone.parent.parent
+        grandparent_spacing = grandparent.length // (len(grandparent.children) + 1)
+
+        if (bone.length >= grandparent_spacing):
+            bone.length = (grandparent_spacing // 2) if (bone.level % 2 == 0) else grandparent_spacing - 1
+
+    for i in bone.children:
+        rescale(i)
 
 def plot_heads(root, canvas):
     """Marks the heads of each fishbone"""
@@ -126,7 +144,7 @@ def draw_bone_NW(fishbone, canvas):
     for i in range(1, fishbone.length):
         canvas[fishbone.row + i][fishbone.col - i] = "\\"
 
-    for i, char in enumerate(reversed(fishbone.name)):
+    for i, char in enumerate(reversed(fishbone.name), 1):
         canvas[fishbone.row + fishbone.length - 1][fishbone.col - fishbone.length - i] = char
 
 def draw_bone_SW(fishbone, canvas):
@@ -136,7 +154,7 @@ def draw_bone_SW(fishbone, canvas):
 
     # Add fishbone name
     name_length = len(fishbone.name)
-    for i, char in enumerate(reversed(fishbone.name)):
+    for i, char in enumerate(reversed(fishbone.name), 1):
         canvas[fishbone.row - fishbone.length + 1][fishbone.col - fishbone.length - i] = char
 
 def draw_fishbone(root, canvas):
@@ -155,17 +173,11 @@ file = sys.argv[1]
 canvas = [[" "]*(COLS + LEFT_PADDING) for _ in range(ROWS)]
 df = pd.read_excel(file)
 root = load_fishbone(df, "Late to Work")
-plot_heads(root, canvas)
+
+rescale(root)
+position_head(root)
 draw_fishbone(root, canvas)
-
-# Guide frames
-for i in range(1, COLS - 1):
-    canvas[0][LEFT_PADDING + i] = "-"
-    canvas[ROWS - 1][LEFT_PADDING + i] = "-"
-
-for i in range(1, ROWS - 1):
-    canvas[i][LEFT_PADDING] = "|"
-    canvas[i][LEFT_PADDING + COLS - 1] = "|"  
+plot_heads(root, canvas)
 
 # Print canvas
 canvasLine = "content"
