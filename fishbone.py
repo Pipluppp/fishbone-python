@@ -1,8 +1,8 @@
 import pandas as pd
 import sys
 
-ROWS = 50
-COLS = 200
+ROWS = 100
+COLS = 300
 LEFT_PADDING = 75
 
 class Fishbone:
@@ -61,14 +61,21 @@ def load_fishbone(df, name):
             child = Fishbone(i[c], level, len(temp.children) + 1)
             child.parent = temp
 
-            # Add point head of fishbone
+            # Add point head of fishbones
             spacing = child.pos * temp.length // 6
-            if (child.level % 2):
+
+            # Special spacing for Level 1 bones, to make the spacing more wider
+            if (child.parent == root):
+                spacing = ((child.pos + 1) // 2) * (root.length // 3) - 50
+
+            # Vertical bone
+            if (child.level % 2 == 1):
                 child.row = temp.row
                 child.col = temp.col - spacing
+            # Horizontal bone
             else:
-                # Add diagonal alternately
-                child.row = temp.row + (spacing if child.parent.pos % 2 else (- spacing))
+                # Add diagonal alternately for parent bones level 1
+                child.row = temp.row + (- spacing if (child.parent.pos % 2 == 0 and child.level == 2) else (spacing))
                 child.col = temp.col - spacing
             
             temp.children.append(child)
