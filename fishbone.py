@@ -3,7 +3,9 @@ import sys
 
 ROWS = 125
 COLS = ROWS * 3
-LEFT_PADDING = COLS // 2
+LEFT_PADDING = COLS // 3
+RIGHT_PADDING = COLS // 10
+TOP_BOTTOM_PADDING = ROWS // 5
 
 class Fishbone:
     def __init__(self, name, level, pos):
@@ -30,11 +32,11 @@ class Fishbone:
             child.print_fishbone_content()
 
 def load_fishbone(df):
-    """Load Fishbone canvass into memory, and add attributes of name, parent, level, length, pos, row and col"""
+    """Load Fishbone canvas into memory, and add attributes of name, parent, level, length, pos, row and col"""
     columns = df.columns.to_list()
     root = Fishbone("Root", 0, 0)
-    root.row = ROWS // 2 - 1
-    root.col = COLS + LEFT_PADDING - 1
+    root.row = TOP_BOTTOM_PADDING + ROWS // 2 - 1
+    root.col = LEFT_PADDING + COLS - 1
 
     # For each row of the table
     for _, i in df.iterrows():
@@ -190,7 +192,7 @@ def draw_fishbone(root, canvas):
         draw_fishbone(i, canvas)
 
 file = sys.argv[1]
-canvas = [[" "]*(COLS + LEFT_PADDING) for _ in range(ROWS)]
+canvas = [[""]*(LEFT_PADDING + COLS + RIGHT_PADDING) for _ in range(TOP_BOTTOM_PADDING + ROWS + TOP_BOTTOM_PADDING)]
 df = pd.read_excel(file)
 root = load_fishbone(df)
 
