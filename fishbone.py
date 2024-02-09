@@ -29,18 +29,20 @@ class Fishbone:
         for child in self.children:
             child.print_fishbone_content()
 
-def load_fishbone(df, name):
+def load_fishbone(df):
     """Load Fishbone canvass into memory, and add attributes of name, parent, level, length, pos, row and col"""
     columns = df.columns.to_list()
-    root = Fishbone(name, 0, 0)
+    root = Fishbone("Root", 0, 0)
     root.row = ROWS // 2 - 1
     root.col = COLS + LEFT_PADDING - 1
 
     # For each row of the table
     for _, i in df.iterrows():
-        # Skip the first line which is just the useless column names
+        # Get Fishbone diagram title to root
         if (_ == 0):
+            root.name = i[columns[0]]
             continue
+
         # Find the canvas/node to append
         for idx, c in enumerate(columns):
             # Series of digits determins the level, skip them until we find the canvas
@@ -190,12 +192,10 @@ def draw_fishbone(root, canvas):
 file = sys.argv[1]
 canvas = [[" "]*(COLS + LEFT_PADDING) for _ in range(ROWS)]
 df = pd.read_excel(file)
-root = load_fishbone(df, "Late to Work")
+root = load_fishbone(df)
 
 rescale(root)
 position_head(root)
-
-root.print_fishbone_content()
 
 draw_fishbone(root, canvas)
 draw_heads(root, canvas)
