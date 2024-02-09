@@ -101,16 +101,8 @@ def rescale(bone):
     for i in bone.children:
         rescale(i)
 
-def plot_heads(root, canvas):
+def draw_heads(root, canvas):
     """Marks the heads of each fishbone"""
-    # Plot special arrow head for main bone
-    if (root.level == 0):
-        length = len(root.name) + 1
-        for i in range(6):
-            for j in range(6):
-                canvas[root.row + i][root.col - length - i - j] = "\u25a0"
-                canvas[root.row - i][root.col - length - i - j] = "\u25a0"
-
     if (root.level != 0):
         canvas[root.row][root.col] = "\u25a0"
 
@@ -118,7 +110,16 @@ def plot_heads(root, canvas):
         return
     
     for i in root.children:
-        plot_heads(i, canvas)
+        draw_heads(i, canvas)
+
+def draw_main_arrow_head(root, canvas):
+    """Mark main fishbone arrow head"""
+    length = len(root.name) + 1
+    fishbone_arrow_length = 10
+    for i in range(fishbone_arrow_length):
+        for j in range(1, fishbone_arrow_length):
+            canvas[root.row + i][root.col - length - i - j] = "\u25a0"
+            canvas[root.row - i][root.col - length - i - j] = "\u25a0"
 
 def draw_bone_horizontal(fishbone, canvas):
     """Draw horizontal fishbones"""
@@ -177,7 +178,8 @@ root = load_fishbone(df, "Late to Work")
 rescale(root)
 position_head(root)
 draw_fishbone(root, canvas)
-plot_heads(root, canvas)
+draw_heads(root, canvas)
+draw_main_arrow_head(root, canvas)
 
 # Print canvas
 canvasLine = "content"
