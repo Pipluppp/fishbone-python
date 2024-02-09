@@ -16,18 +16,18 @@ class Fishbone:
         self.col = 0
         self.children = []   
 
-def print_fishbone(root):
-    """For testing: Recursively print Fishbones"""
-    for i in range(root.level):
-        print("-", end = "")
+    def print_fishbone_content(self):
+        """For testing: Recursively print Fishbones"""
+        for i in range(self.level):
+            print("-", end = "")
 
-    print(f"{root.name} (parent is {root.parent.name}, has coordinates ({root.row}, {root.col}) and length {root.length})")
+        print(f"{self.name} (parent is {self.parent.name}, has coordinates ({self.row}, {self.col}) and length {self.length})")
 
-    branches = len(root.children)
-    if (branches == 0):
-        return
-    for i in root.children:
-        print_fishbone(i)
+        branches = len(self.children)
+        if (branches == 0):
+            return
+        for child in self.children:
+            child.print_fishbone_content()
 
 def load_fishbone(df, name):
     """Load Fishbone canvass into memory, and add attributes of name, parent, level, length, pos, row and col"""
@@ -194,6 +194,9 @@ root = load_fishbone(df, "Late to Work")
 
 rescale(root)
 position_head(root)
+
+root.print_fishbone_content()
+
 draw_fishbone(root, canvas)
 draw_heads(root, canvas)
 draw_main_arrow_head(root, canvas)
