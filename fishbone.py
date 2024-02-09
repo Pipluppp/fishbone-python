@@ -1,24 +1,27 @@
 import pandas as pd
 import sys
 
-ROWS = 125
-COLS = ROWS * 3
-LEFT_PADDING = COLS // 3
-RIGHT_PADDING = COLS // 10
-TOP_BOTTOM_PADDING = ROWS // 5
+class Canvas:
+    def __init__(self, rows):
+        self.rows = rows
+        self.cols = rows * 3
+        self.left_padding = self.cols // 3
+        self.right_padding = self.cols  // 10
+        self.top_bottom_padding = rows // 5
+        self.content = [[" "]*(self.left_padding + self.cols + self.right_padding) for _ in range(self.top_bottom_padding + self.rows + self.top_bottom_padding)]
 
 class Fishbone:
-    def __init__(self, name, level, pos):
+    def __init__(self, name, level, pos, canvas):
         self.name = name
         self.parent = self
         self.level = level
-        self.length = (COLS if level % 2 == 0 else ROWS) >> level
+        self.length = (canvas.cols if level % 2 == 0 else canvas.rows) >> level
         self.pos = pos
         self.row = 0
         self.col = 0
         self.children = []   
 
-    def load_fishbone(self, df):
+    def load_fishbone(self, df, canvas):
         """Load Fishbone canvas into memory, and add attributes of name, parent, level, length, pos, row and col"""
         columns = df.columns.to_list()
 
@@ -46,7 +49,7 @@ class Fishbone:
                     temp = temp.children[branch - 1]
                     level += 1
                     
-                child = Fishbone(i[c], level, len(temp.children) + 1)
+                child = Fishbone(i[c], level, len(temp.children) + 1, canvas)
                 child.parent = temp
                 
                 temp.children.append(child)
@@ -74,7 +77,7 @@ class Fishbone:
 
         # Special spacing for Level 1 bones, to make the spacing more wider
         if (self.level == 1):
-            spacing = ((self.pos + 1) // 2) * (root.length // 3) - (COLS // 10)
+            spacing = ((self.pos + 1) // 2) * (root.length // 3) - (canvas.cols // 10)
 
         # Vertical bone
         if (self.level % 2 == 1):
@@ -92,7 +95,7 @@ class Fishbone:
 def draw_heads(root, canvas):
     """Marks the heads of each fishbone"""
     if (root.level != 0):
-        canvas[root.row][root.col] = "\u25a0"
+        canvas.content[root.row][root.col] = "\u25a0"
 
     if (len(root.children) == 0):
         return
@@ -103,37 +106,37 @@ def draw_heads(root, canvas):
 def draw_main_arrow_head(root, canvas):
     """Mark main fishbone arrow head"""
     length = len(root.name) + 1
-    fishbone_arrow_length = 10
+    fishbone_arrow_length = canvas.rows  // 10
     
     # Spacing between arrow head and title
-    canvas[root.row][root.col - length] = " "
-    canvas[root.row][root.col - length + 1] = " "
+    canvas.content[root.row][root.col - length] = " "
+    canvas.content[root.row][root.col - length + 1] = " "
 
     for i in range(1, fishbone_arrow_length):
         for j in range(1, fishbone_arrow_length):
-            canvas[root.row + i][root.col - length - i - j] = "\u25a0"
-            canvas[root.row - i][root.col - length - i - j] = "\u25a0"
+            canvas.content[root.row + i][root.col - length - i - j] = "\u25a0"
+            canvas.content[root.row - i][root.col - length - i - j] = "\u25a0"
         
 def draw_bone_horizontal(fishbone, canvas):
     """Draw horizontal fishbones"""
     char = "-" if fishbone.level else "\u25a0"
 
     for i in range(1, fishbone.length):
-        canvas[fishbone.row][fishbone.col - i] = char
+        canvas.content[fishbone.row][fishbone.col - i] = char
 
     draw_bone_name(fishbone, canvas)
 
 def draw_bone_NW(fishbone, canvas):
     """Draw diagonal bones towards North West"""
     for i in range(1, fishbone.length):
-        canvas[fishbone.row + i][fishbone.col - i] = "\\"
+        canvas.content[fishbone.row + i][fishbone.col - i] = "\\"
 
     draw_bone_name(fishbone, canvas)
 
 def draw_bone_SW(fishbone, canvas):
     """Draw diagonal bones towards South West"""
     for i in range(1, fishbone.length):
-        canvas[fishbone.row - i][fishbone.col - i] = "/"
+        canvas.content[fishbone.row - i][fishbone.col - i] = "/"
 
     draw_bone_name(fishbone, canvas)
 
@@ -161,7 +164,7 @@ def draw_bone_name(fishbone, canvas):
         name_position_col = fishbone.col - fishbone.length
 
     for i, char in enumerate(reversed(fishbone.name), 1):
-        canvas[name_position_row][name_position_col - i] = char
+        canvas.content[name_position_row][name_position_col - i] = char
 
 def draw_fishbone(root, canvas):
     """Draw fishbones recursively"""
@@ -176,15 +179,16 @@ def draw_fishbone(root, canvas):
         draw_fishbone(i, canvas)
 
 file = sys.argv[1]
-canvas = [[""]*(LEFT_PADDING + COLS + RIGHT_PADDING) for _ in range(TOP_BOTTOM_PADDING + ROWS + TOP_BOTTOM_PADDING)]
 df = pd.read_excel(file)
 
-root = Fishbone("Root", 0, 0)
-root.row = TOP_BOTTOM_PADDING + ROWS // 2 - 1
-root.col = LEFT_PADDING + COLS - 1
+canvas = Canvas(50)
+
+root = Fishbone("Root", 0, 0, canvas)
+root.row = canvas.top_bottom_padding + canvas.rows // 2 - 1
+root.col = canvas.left_padding + canvas.cols - 1
 
 # Loads fishbone content into root, fix bone lengths overlaps, and position head of the fishbones
-root.load_fishbone(df)
+root.load_fishbone(df, canvas)
 root.rescale_bone_lengths()
 root.position_head()
 
@@ -195,7 +199,7 @@ draw_main_arrow_head(root, canvas)
 
 # Print canvas
 canvasLine = "content"
-for i, row in enumerate(reversed(canvas), 1):
+for i, row in enumerate(reversed(canvas.content), 1):
     values = "".join(f"{element:{1}s}" for element in row)
     line   = canvasLine.replace("content", values)
     print(line)
