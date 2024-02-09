@@ -116,11 +116,16 @@ def draw_main_arrow_head(root, canvas):
     """Mark main fishbone arrow head"""
     length = len(root.name) + 1
     fishbone_arrow_length = 10
-    for i in range(fishbone_arrow_length):
+    
+    # Spacing between arrow head and title
+    canvas[root.row][root.col - length] = " "
+    canvas[root.row][root.col - length + 1] = " "
+
+    for i in range(1, fishbone_arrow_length):
         for j in range(1, fishbone_arrow_length):
             canvas[root.row + i][root.col - length - i - j] = "\u25a0"
             canvas[root.row - i][root.col - length - i - j] = "\u25a0"
-
+        
 def draw_bone_horizontal(fishbone, canvas):
     """Draw horizontal fishbones"""
     char = "-" if fishbone.level else "\u25a0"
@@ -128,35 +133,47 @@ def draw_bone_horizontal(fishbone, canvas):
     for i in range(1, fishbone.length):
         canvas[fishbone.row][fishbone.col - i] = char
 
-    # If main bone, name at front
-    if (fishbone.level == 0):
-        name_starting_column = fishbone.col - 1
-        # Add space between front bone name and arrow
-        canvas[fishbone.row][fishbone.col - len(fishbone.name) - 1] = " "
-    else:
-        name_starting_column = fishbone.col - fishbone.length - 1
-    
-    # Add fishbone name
-    for i, char in enumerate(reversed(fishbone.name)):
-        canvas[fishbone.row][name_starting_column - i] = char
+    draw_bone_name(fishbone, canvas)
 
 def draw_bone_NW(fishbone, canvas):
     """Draw diagonal bones towards North West"""
     for i in range(1, fishbone.length):
         canvas[fishbone.row + i][fishbone.col - i] = "\\"
 
-    for i, char in enumerate(reversed(fishbone.name), 1):
-        canvas[fishbone.row + fishbone.length - 1][fishbone.col - fishbone.length - i] = char
+    draw_bone_name(fishbone, canvas)
 
 def draw_bone_SW(fishbone, canvas):
     """Draw diagonal bones towards South West"""
     for i in range(1, fishbone.length):
         canvas[fishbone.row - i][fishbone.col - i] = "/"
 
-    # Add fishbone name
-    name_length = len(fishbone.name)
+    draw_bone_name(fishbone, canvas)
+
+def draw_bone_name(fishbone, canvas):
+    """Draw name of fishbone"""
+    name_position_row = 0
+    name_position_col = 0
+
+    # Name position varies on type of bone
+    if (fishbone == root):
+        # Root
+        name_position_row = fishbone.row
+        name_position_col = fishbone.col + 1
+    elif (fishbone.level % 2 == 0):
+        # Horizontal bones non-root
+        name_position_row = fishbone.row
+        name_position_col = fishbone.col - fishbone.length - 1
+    elif (fishbone.pos % 2 == 0 and fishbone.level == 1):
+        # South-west diagonal bones
+        name_position_row = fishbone.row - fishbone.length + 1
+        name_position_col = fishbone.col - fishbone.length
+    else:
+        # North-west diagonal bones
+        name_position_row = fishbone.row + fishbone.length - 1
+        name_position_col = fishbone.col - fishbone.length
+
     for i, char in enumerate(reversed(fishbone.name), 1):
-        canvas[fishbone.row - fishbone.length + 1][fishbone.col - fishbone.length - i] = char
+        canvas[name_position_row][name_position_col - i] = char
 
 def draw_fishbone(root, canvas):
     """Draw fishbones recursively"""
