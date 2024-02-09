@@ -24,42 +24,43 @@ class Fishbone:
         self.col = 0
         self.children = []   
 
-    def load_fishbone(self, df, canvas):
+    def load_fishbone_structure(self, df, canvas):
         """Load Fishbone canvas into memory, and add attributes of name, parent, level, length, pos"""
         columns = df.columns.to_list()
 
-        # For each row of the table
-        for _, i in df.iterrows():
+        # The number of bone levels is just the number of columns from Excel dataframe - 1
+        Fishbone.max_height = len(columns) - 1
+
+        for _, row in df.iterrows():
             # Get Fishbone diagram title to root
             if (_ == 0):
-                self.name = i[columns[0]]
+                self.name = row[columns[0]]
                 continue
 
-            # Find the canvas/node to append
+            # Find the current node on the Excel row to append (e.g. 1, 2, 3, current_node)
             for idx, c in enumerate(columns):
-                # Series of digits determins the level, skip them until we find the canvas
-                if (str(i[c]).isdigit()):
+                current_node = row[c]
+
+                if (str(current_node).isdigit()):
                     continue
 
-                temp = root
-                level = 1
-
                 # Traverse through the branches to find specific parent bone to append the node
-                for j in range(1, idx):
-                    branch = len(temp.children)
-                    if (branch == 0):
+                parent = root
+                level = 1
+                for _ in range(1, idx):
+                    branches = len(parent.children)
+                    if (branches == 0):
                         break
-                    temp = temp.children[branch - 1]
+                    parent = parent.children[branches - 1]
                     level += 1
                     
-                # Update Fishbone's max height and degree
-                Fishbone.max_height = max(Fishbone.max_height, idx - 1)
-                Fishbone.max_degree = max(Fishbone.max_degree, len(temp.children) + 1)
+                # Update Fishbone's max number of children
+                Fishbone.max_degree = max(Fishbone.max_degree, len(parent.children) + 1)
 
-                child = Fishbone(i[c], level, len(temp.children) + 1, canvas)
-                child.parent = temp
+                child = Fishbone(current_node, level, len(parent.children) + 1, canvas)
+                child.parent = parent
                 
-                temp.children.append(child)
+                parent.children.append(child)
                 break
 
         return self
@@ -190,13 +191,13 @@ df = pd.read_excel(file)
 
 canvas = Canvas(50)
 root = Fishbone("Root", 0, 0, canvas)
-root.load_fishbone(df, canvas)
+root.load_fishbone_structure(df, canvas)
 
 # Increase canvas size if loaded fishbone too complex (lots of levels, lots of content). Reload the contents
 if (Fishbone.max_height > 3 or Fishbone.max_degree > 7):
     canvas = Canvas(125)
     root = Fishbone("Root", 0, 0, canvas)
-    root.load_fishbone(df, canvas)
+    root.load_fishbone_structure(df, canvas)
 
 # Position the fishbone heads, rescale bone lengths that overlap
 root.row = canvas.top_bottom_padding + canvas.rows // 2 - 1 
