@@ -18,92 +18,76 @@ class Fishbone:
         self.col = 0
         self.children = []   
 
-    def print_fishbone_content(self):
-        """For testing: Recursively print Fishbones"""
-        for i in range(self.level):
-            print("-", end = "")
+    def load_fishbone(self, df):
+        """Load Fishbone canvas into memory, and add attributes of name, parent, level, length, pos, row and col"""
+        columns = df.columns.to_list()
 
-        print(f"{self.name} (parent is {self.parent.name}, has coordinates ({self.row}, {self.col}) and length {self.length})")
-
-        branches = len(self.children)
-        if (branches == 0):
-            return
-        for child in self.children:
-            child.print_fishbone_content()
-
-def load_fishbone(df):
-    """Load Fishbone canvas into memory, and add attributes of name, parent, level, length, pos, row and col"""
-    columns = df.columns.to_list()
-    root = Fishbone("Root", 0, 0)
-    root.row = TOP_BOTTOM_PADDING + ROWS // 2 - 1
-    root.col = LEFT_PADDING + COLS - 1
-
-    # For each row of the table
-    for _, i in df.iterrows():
-        # Get Fishbone diagram title to root
-        if (_ == 0):
-            root.name = i[columns[0]]
-            continue
-
-        # Find the canvas/node to append
-        for idx, c in enumerate(columns):
-            # Series of digits determins the level, skip them until we find the canvas
-            if (str(i[c]).isdigit()):
+        # For each row of the table
+        for _, i in df.iterrows():
+            # Get Fishbone diagram title to root
+            if (_ == 0):
+                self.name = i[columns[0]]
                 continue
 
-            temp = root
-            level = 1
+            # Find the canvas/node to append
+            for idx, c in enumerate(columns):
+                # Series of digits determins the level, skip them until we find the canvas
+                if (str(i[c]).isdigit()):
+                    continue
 
-            # Traverse through the branches to find specific parent bone to append the node
-            for j in range(1, idx):
-                branch = len(temp.children)
-                if (branch == 0):
-                    break
-                temp = temp.children[branch - 1]
-                level += 1
+                temp = root
+                level = 1
+
+                # Traverse through the branches to find specific parent bone to append the node
+                for j in range(1, idx):
+                    branch = len(temp.children)
+                    if (branch == 0):
+                        break
+                    temp = temp.children[branch - 1]
+                    level += 1
+                    
+                child = Fishbone(i[c], level, len(temp.children) + 1)
+                child.parent = temp
                 
-            child = Fishbone(i[c], level, len(temp.children) + 1)
-            child.parent = temp
-            
-            temp.children.append(child)
-            break
+                temp.children.append(child)
+                break
 
-    return root
+        return self
+    
+    def rescale_bone_lengths(self):
+        """Rescale fishbone length if longer than grandparent's spacing. Also limits going out the canvas"""
+        # Overlaps only happen with bone levels 3 onwards
+        if (self.level > 2):
+            grandparent = self.parent.parent
+            grandparent_spacing = grandparent.length // (len(grandparent.children) + 1)
 
-def position_head(bone):
-    """Position heads of fishbones, relative to number of siblings"""
-    siblings = len(bone.parent.children)
-    spacing = bone.pos * bone.parent.length // (siblings + 1)
+            if (self.length >= grandparent_spacing):
+                self.length = (grandparent_spacing // 2) if (self.level % 2 == 0) else grandparent_spacing - 1
 
-    # Special spacing for Level 1 bones, to make the spacing more wider
-    if (bone.level == 1):
-        spacing = ((bone.pos + 1) // 2) * (root.length // 3) - (COLS // 10)
+        for child in self.children:
+            child.rescale_bone_lengths()
 
-    # Vertical bone
-    if (bone.level % 2 == 1):
-        bone.row = bone.parent.row
-        bone.col = bone.parent.col - spacing
-    # Horizontal bone
-    else:
-        # Add Level 2 bones alternately on top or bottom depending on parent being at top or bottom
-        bone.row = bone.parent.row + (- spacing if (bone.parent.pos % 2 == 0 and bone.level == 2) else (spacing))
-        bone.col = bone.parent.col - spacing
+    def position_head(self):
+        """Position heads of fishbones, relative to number of siblings"""
+        siblings = len(self.parent.children)
+        spacing = self.pos * self.parent.length // (siblings + 1)
 
-    for i in bone.children:
-        position_head(i)
+        # Special spacing for Level 1 bones, to make the spacing more wider
+        if (self.level == 1):
+            spacing = ((self.pos + 1) // 2) * (root.length // 3) - (COLS // 10)
 
-def rescale(bone):
-    """Rescale fishbone length if longer than grandparent's spacing. Also limits going out the canvas"""
-    # Overlaps only happen with bone levels 3 onwards
-    if (bone.level > 2):
-        grandparent = bone.parent.parent
-        grandparent_spacing = grandparent.length // (len(grandparent.children) + 1)
+        # Vertical bone
+        if (self.level % 2 == 1):
+            self.row = self.parent.row
+            self.col = self.parent.col - spacing
+        # Horizontal bone
+        else:
+            # Add Level 2 bones alternately on top or bottom depending on parent being at top or bottom
+            self.row = self.parent.row + (- spacing if (self.parent.pos % 2 == 0 and self.level == 2) else (spacing))
+            self.col = self.parent.col - spacing
 
-        if (bone.length >= grandparent_spacing):
-            bone.length = (grandparent_spacing // 2) if (bone.level % 2 == 0) else grandparent_spacing - 1
-
-    for i in bone.children:
-        rescale(i)
+        for child in self.children:
+            child.position_head()
 
 def draw_heads(root, canvas):
     """Marks the heads of each fishbone"""
@@ -166,7 +150,7 @@ def draw_bone_name(fishbone, canvas):
     elif (fishbone.level % 2 == 0):
         # Horizontal bones non-root
         name_position_row = fishbone.row
-        name_position_col = fishbone.col - fishbone.length - 1
+        name_position_col = fishbone.col - fishbone.length
     elif (fishbone.pos % 2 == 0 and fishbone.level == 1):
         # South-west diagonal bones
         name_position_row = fishbone.row - fishbone.length + 1
@@ -194,11 +178,17 @@ def draw_fishbone(root, canvas):
 file = sys.argv[1]
 canvas = [[""]*(LEFT_PADDING + COLS + RIGHT_PADDING) for _ in range(TOP_BOTTOM_PADDING + ROWS + TOP_BOTTOM_PADDING)]
 df = pd.read_excel(file)
-root = load_fishbone(df)
 
-rescale(root)
-position_head(root)
+root = Fishbone("Root", 0, 0)
+root.row = TOP_BOTTOM_PADDING + ROWS // 2 - 1
+root.col = LEFT_PADDING + COLS - 1
 
+# Loads fishbone content into root, fix bone lengths overlaps, and position head of the fishbones
+root.load_fishbone(df)
+root.rescale_bone_lengths()
+root.position_head()
+
+# Draws the fishbone diagram
 draw_fishbone(root, canvas)
 draw_heads(root, canvas)
 draw_main_arrow_head(root, canvas)
