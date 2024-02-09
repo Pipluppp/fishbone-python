@@ -5,12 +5,15 @@ class Canvas:
     def __init__(self, rows):
         self.rows = rows
         self.cols = rows * 3
-        self.left_padding = self.cols // 3
+        self.left_padding = self.cols // 2
         self.right_padding = self.cols  // 10
         self.top_bottom_padding = rows // 5
         self.content = [[" "]*(self.left_padding + self.cols + self.right_padding) for _ in range(self.top_bottom_padding + self.rows + self.top_bottom_padding)]
 
 class Fishbone:
+    max_height = 0
+    max_degree = 0
+
     def __init__(self, name, level, pos, canvas):
         self.name = name
         self.parent = self
@@ -22,7 +25,7 @@ class Fishbone:
         self.children = []   
 
     def load_fishbone(self, df, canvas):
-        """Load Fishbone canvas into memory, and add attributes of name, parent, level, length, pos, row and col"""
+        """Load Fishbone canvas into memory, and add attributes of name, parent, level, length, pos"""
         columns = df.columns.to_list()
 
         # For each row of the table
@@ -49,6 +52,10 @@ class Fishbone:
                     temp = temp.children[branch - 1]
                     level += 1
                     
+                # Update Fishbone's max height and degree
+                Fishbone.max_height = max(Fishbone.max_height, idx - 1)
+                Fishbone.max_degree = max(Fishbone.max_degree, len(temp.children) + 1)
+
                 child = Fishbone(i[c], level, len(temp.children) + 1, canvas)
                 child.parent = temp
                 
@@ -182,13 +189,18 @@ file = sys.argv[1]
 df = pd.read_excel(file)
 
 canvas = Canvas(50)
-
 root = Fishbone("Root", 0, 0, canvas)
-root.row = canvas.top_bottom_padding + canvas.rows // 2 - 1
-root.col = canvas.left_padding + canvas.cols - 1
-
-# Loads fishbone content into root, fix bone lengths overlaps, and position head of the fishbones
 root.load_fishbone(df, canvas)
+
+# Increase canvas size if loaded fishbone too complex (lots of levels, lots of content). Reload the contents
+if (Fishbone.max_height > 3 or Fishbone.max_degree > 7):
+    canvas = Canvas(125)
+    root = Fishbone("Root", 0, 0, canvas)
+    root.load_fishbone(df, canvas)
+
+# Position the fishbone heads, rescale bone lengths that overlap
+root.row = canvas.top_bottom_padding + canvas.rows // 2 - 1 
+root.col = canvas.left_padding + canvas.cols - 1
 root.rescale_bone_lengths()
 root.position_head()
 
