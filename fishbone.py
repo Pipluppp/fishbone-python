@@ -14,17 +14,17 @@ class Fishbone:
     max_height = 0
     max_degree = 0
 
-    def __init__(self, name, level, pos, canvas):
+    def __init__(self, name, level, pos):
         self.name = name
         self.parent = self
         self.level = level
-        self.length = (canvas.cols if level % 2 == 0 else canvas.rows) >> level
         self.pos = pos
+        self.length = 0
         self.row = 0
         self.col = 0
         self.children = []   
 
-    def load_fishbone_structure(self, df, canvas):
+    def load_fishbone_structure(self, df):
         """Load Fishbone canvas into memory, and add attributes of name, parent, level, length, pos"""
         columns = df.columns.to_list()
 
@@ -54,34 +54,52 @@ class Fishbone:
                     parent = parent.children[branches - 1]
                     level += 1
                     
+                # Create the Fishbone node, connect to parent, and append to the Fishbone structure
+                child = Fishbone(current_node, level, len(parent.children) + 1)
+                child.parent = parent
+                parent.children.append(child)
+
                 # Update Fishbone's max number of children
                 Fishbone.max_degree = max(Fishbone.max_degree, len(parent.children) + 1)
-
-                child = Fishbone(current_node, level, len(parent.children) + 1, canvas)
-                child.parent = parent
-                
-                parent.children.append(child)
                 break
-
         return self
     
-    def rescale_bone_lengths(self):
-        """Rescale fishbone length if longer than grandparent's spacing. Also limits going out the canvas"""
-        # Overlaps only happen with bone levels 3 onwards
-        if (self.level > 2):
-            grandparent = self.parent.parent
-            grandparent_spacing = grandparent.length // (len(grandparent.children) + 1)
+    def set_fishbone_lengths(self, canvas):
+        """Set the fishbone lengths of the Fishbone structure"""
+        # Horizontal/Vertical bones get column/rows size, scaled by the bone's level
+        if (self.level % 2 == 0):
+            self.length = canvas.cols >> self.level
+        else:
+            self.length = canvas.rows >> self.level
 
-            if (self.length >= grandparent_spacing):
-                self.length = (grandparent_spacing // 2) if (self.level % 2 == 0) else grandparent_spacing - 1
+        # Rescale lengths overlapping fishbones around it
+        self.rescale_bone_length()
 
         for child in self.children:
-            child.rescale_bone_lengths()
+            child.set_fishbone_lengths(canvas)
+    
+    def rescale_bone_length(self):
+        """Rescale fishbone length if longer than grandparent's spacing. Also limits going out the canvas"""
+        # Overlaps only happen with bone levels 3 onwards
+        grandparent = self.parent.parent
+        grandparent_spacing = grandparent.length // (len(grandparent.children) + 1)
 
-    def position_head(self):
+        if (self.level <= 2):
+            return
+    
+        if (self.length < grandparent_spacing):
+            return
+        
+        self.length = (grandparent_spacing // 2) if (self.level % 2 == 0) else grandparent_spacing - 1
+
+    def position_heads(self, canvas):
         """Position heads of fishbones, relative to number of siblings"""
         siblings = len(self.parent.children)
         spacing = self.pos * self.parent.length // (siblings + 1)
+
+        # Special placement for Root bone
+        root.row = canvas.top_bottom_padding + canvas.rows // 2 - 1 
+        root.col = canvas.left_padding + canvas.cols - 1
 
         # Special spacing for Level 1 bones, to make the spacing more wider
         if (self.level == 1):
@@ -98,7 +116,7 @@ class Fishbone:
             self.col = self.parent.col - spacing
 
         for child in self.children:
-            child.position_head()
+            child.position_heads(canvas)
 
 def draw_heads(root, canvas):
     """Marks the heads of each fishbone"""
@@ -189,21 +207,18 @@ def draw_fishbone(root, canvas):
 file = sys.argv[1]
 df = pd.read_excel(file)
 
-canvas = Canvas(50)
-root = Fishbone("Root", 0, 0, canvas)
-root.load_fishbone_structure(df, canvas)
+root = Fishbone("Root", 0, 0)
+root.load_fishbone_structure(df)
 
-# Increase canvas size if loaded fishbone too complex (lots of levels, lots of content). Reload the contents
+# Set canvas size dependent on fishbone complexity: Multiple evels, Packed with content
 if (Fishbone.max_height > 3 or Fishbone.max_degree > 7):
     canvas = Canvas(125)
-    root = Fishbone("Root", 0, 0, canvas)
-    root.load_fishbone_structure(df, canvas)
+else:
+    canvas = Canvas(50)
 
-# Position the fishbone heads, rescale bone lengths that overlap
-root.row = canvas.top_bottom_padding + canvas.rows // 2 - 1 
-root.col = canvas.left_padding + canvas.cols - 1
-root.rescale_bone_lengths()
-root.position_head()
+# Set the fishbone lengths, position the fishbone heads
+root.set_fishbone_lengths(canvas)
+root.position_heads(canvas)
 
 # Draws the fishbone diagram
 draw_fishbone(root, canvas)
